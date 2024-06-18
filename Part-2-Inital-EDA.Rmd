@@ -1,0 +1,98 @@
+---
+title: "R Notebook"
+author: "Bill Erdely"
+output: html_notebook
+---
+## Research Question 
+
+What are the long-term trends in alcohol consumption and life expectancy and what is there relationship? 
+
+## Data Processing 
+### Data Intake
+```{r}
+library(readr)
+Life_Expectancy_Data <- read_csv("Life Expectancy Data.csv")
+Drinks_Data <- read_csv("Drinks Data.csv")
+```
+This Code loads the apropriate libraries and also both of my datasets which are both csv files. 
+
+### Examine Each Data Source
+The origin of both of my datasets are from the Global Health Observatory (GHO) data repository from The World Health Organization. They keep track of the health status and life expectancy as well as many other related factors for all countries. The data-sets are made available to public for the purpose of health data analysis. The key variables that I will be using in these data sets are the life expectancy for each country in the life expectancy data and the Alcohol intake in the Drinks data. There is not much missing data and there is no obvious outliers.   
+
+### Data Wrangling 
+To do analysis for my research question,I will join both of my datasets together so I can directly see the relationship between life expectancy and alcohol consumption because right not the data for life expectancy and the data for alcohol consumption are in two different data sets. 
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+
+Drinks_Data <- 
+  Drinks_Data %>% 
+  rename(Alcohol_Intake = "Pure Alcohol Intake per capita (Liters)",
+          Beverage_Type = "Beverage Type")
+
+
+Life_Expectancy_Data <- 
+  Life_Expectancy_Data %>% 
+  rename(Life_Expectancy = "Life expectancy",
+         Adult_Mortality = "Adult Mortality",
+         Infant_deaths = "infant deaths",
+         Percentage_expenditure = "percentage expenditure",
+         under_five_deaths = "under-five deaths",
+         Total_expenditure = "Total expenditure")
+
+  
+  
+```
+I had to change the name of the variables so there is no spaces in the variable names 
+
+```{r}
+Life_Expectancy_Data_Joined <- left_join(Life_Expectancy_Data, Drinks_Data , by = "Country")
+```
+I joined the Drinks data with the Life expectancy data, so analysis relating to the research question is easier. For this join the goal was to match the country in Life expectancy with a Gereral Location in the Drinks data so I could graph average life expectancy over time using the same regions used in the Drinks data. 
+
+## Data Visualization  
+```{r}
+library(ggplot2)
+
+Average_Intake <- 
+  Drinks_Data %>% 
+  group_by(GeneralLocation, Year) %>% 
+  summarize(Average_Intake = mean(Alcohol_Intake, na.rm = TRUE)) %>% 
+  ungroup()
+# Calculates the average alcohol consumption per year in each General Location
+
+ggplot(Average_Intake, aes(x = Year, y = Average_Intake, color = GeneralLocation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average Alcohol Intake per Year by Location",
+       x = "Year",
+       y = "Average Alcohol Intake (Liters)") +
+  theme_minimal()
+
+```
+This graph shows the trend of Alcohol Consumption over time for different regions of the world. 
+
+```{r}
+Average_life_expectancy <- 
+  Life_Expectancy_Data_Joined %>% 
+  group_by(GeneralLocation, Year.x) %>% 
+  summarize(Average_life_expectancy = mean(Life_Expectancy, na.rm = TRUE)) %>% 
+  ungroup()
+  # Calculates the average life expectancy per year in each General Location
+
+ggplot(Average_life_expectancy, aes(x = Year.x, y = Average_life_expectancy, color = GeneralLocation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average Life expectancy per Year by Location",
+       x = "Year",
+       y = "Average Life Expectancy") +
+  theme_minimal()
+  
+
+```
+This graph shows the trend of Life Expectancy over time for different regions of the world. 
+
+## Address Research Question 
+Based on the observations of the data shown in these graph, I think I will answer my research question by saying that the trend for alcohol consumption over time seems to be steady, and the trend for life expectancy is slowly increasing over time. To answer the second part of my research question, alcohol does not seem to have a strong relationship with life expectancy at least on a general level of life expectancy of a country. There are a lot more other factors that might influence life expectancy even more that could explain the overall increase in life expectancy while the amount of alcohol consumpted has not really changed.  I will have to plot alcohol consumption against life expectancy over time on a graph to confirm my observation but this is what my intial thoughts are after seeing these graphs. I came to this conclusion because looking at the graphs the level of alcohol consumption over this time period is relatively steady with a slight increase between 2005 and 2010 that then came back down to what it was before. However the Graph of life expectancy shows a steady increase over time in life expectancy for all regions of the world, indicating there is not a strong relationship between life expectancy and alchohol consumption because there does not seem to be a strong direct relationship. Another question I could potentially investigate are, what factors have a strong correlation with life expectancy? 
+
+
