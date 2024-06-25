@@ -1,0 +1,189 @@
+---
+title: "Final Project Report"
+author: "Bill Erdely"
+date: "Due June 24, 2023"
+output: html_notebook
+---
+## Research Questions 
+High alcohol consumption is associated with several different health risks, but how much does this really affect life expectancy? I will be looking at the recent trends of both alcohol consumption and life expectancy and investigating how much of an affect alcohol consumption has on the life expectancy of different regions of the world. My specific research question is: What are the recent trends in average alcohol consumption and average life expectancy and what is their relationship for different regions of the world?
+
+
+## Data Processing 
+
+### Data Intake
+```{r message=FALSE, warning=FALSE}
+#This code loads the appropriate libraries and also both of my datasets which are both csv files. 
+library(readr)
+Life_Expectancy_Data <- read_csv("Life Expectancy Data.csv", show_col_types = FALSE)
+Drinks_Data <- read_csv("Drinks Data.csv", show_col_types = FALSE)
+
+```
+
+
+### Inspecting Data Sources
+The origin of both of my datasets are from the Global Health Observatory (GHO) data repository from The World Health Organization. They keep track of the health status and life expectancy as well as many other related factors for all countries. The data-sets are made available to public for the purpose of health data analysis. The key variables that I will be using in these data sets are the life expectancy for each country in the life expectancy data set and the Alcohol intake in the Drinks data set. Although the life expectancy data set contains several other variables, these will not be the focus of my investigation. I will investigate the variables that help me answer my research question.There is not a lot of missing data and there is no obvious outliers.   
+
+This is a look at the structure drinks data set.
+```{r warning=FALSE}
+#Shows the first 6 rows of the drinks data set 
+head(Drinks_Data)
+```
+This is a look at the structure life expectancy data set.
+```{r warning=FALSE}
+#Shows the first 6 rows of the life expectancy data set 
+head(Life_Expectancy_Data)
+```
+
+### Data Wrangling 
+
+There are several spaces in the variable names in each data set so the following code renames the variables names to get rid of the spaces.
+```{r message=FALSE, warning=FALSE}
+
+library(dplyr)
+# This code renames several variables in the drinks data set, two variables because of spacing and two variable to provide clearer names that better represent the data
+
+Drinks_Data <- 
+  Drinks_Data %>% 
+  rename(Alcohol_Intake = "Pure Alcohol Intake per capita (Liters)",
+          Beverage_Type = "Beverage Type",
+          Region = "GeneralLocation",
+          Country = "Location")
+
+
+# This code renames several variables in the life expectancy data set because of spacing in the names
+Life_Expectancy_Data <- 
+  Life_Expectancy_Data %>% 
+  rename(Life_Expectancy = "Life expectancy",
+         Adult_Mortality = "Adult Mortality",
+         Infant_deaths = "infant deaths",
+         Percentage_expenditure = "percentage expenditure",
+         under_five_deaths = "under-five deaths",
+         Total_expenditure = "Total expenditure")
+
+  
+  
+```
+
+The following code makes the data set wider by making each unique case under Beverage_Type a variable to dramatically reduce the number of rows. 
+```{r}
+# 
+library(tidyr)
+Drinks_Data <- Drinks_Data %>%
+  pivot_wider(
+    names_from = Beverage_Type,
+    values_from = Alcohol_Intake
+  )
+```
+
+This is what the new wider drinks dataset looks like
+```{r}
+#Shows the first 6 rows of the drinks data set 
+head(Drinks_Data)
+```
+
+The following code joins the Drinks data set with the Life expectancy data set. For this join the country and year in Life expectancy is matched with country and year in the Drinks data set. After joining the tables in this way, average life expectancy over time can be graphed using the same regions used in the Drinks data set, allowing us to compare trends in the same regions. 
+```{r}
+#Code uses left join to join the drinks data to the life expectancy data using the columns country and year to match cases.
+Joined_Data <- left_join(Life_Expectancy_Data, Drinks_Data, by = c("Country", "Year"))
+```
+
+There are several rows under General Location that need to be removed so they are not included in our graphs.
+```{r}
+#This code creates a user defined function that will get rid of the rows that have missing data. 
+remove_na_rows <- function(data) {
+  data[complete.cases(data), ]
+}
+
+ Joined_Data<- remove_na_rows(Joined_Data)
+```
+
+This will allows us to compare the average alcohol consumption between different regions of the world across several years.
+```{r message=FALSE, warning=FALSE}
+#The following code groups the countries according to the general location and year and then calculates the average alchohol consumption.  
+Average_Intake <- 
+   Joined_Data%>% 
+  group_by(Region, Year) %>% 
+  summarize(Average_Intake = mean(Alcohol, na.rm = TRUE), .groups = 'drop') 
+  
+```
+
+ 
+ 
+ This will allows us to compare the average life expectancy between different regions of the world across several years. 
+```{r}
+#The following code groups the countries according to the general location and year and then calculates the average life expectancy. 
+Average_life_expectancy <- 
+  Joined_Data %>% 
+  group_by(Region, Year) %>% 
+  summarize(Average_life_expectancy = mean(Life_Expectancy, na.rm = TRUE), .groups = 'drop') 
+
+
+```
+
+
+This code joins the average intake data set and the average life expectancy data set, joining the data sets in this way also allows a direct analysis of the relationship between average life expectancy and average alcohol consumption which were previously in separate data tables.
+```{r}
+#Code uses full join to only keep matching cases, to join the drinks data to the life expectancy data using the columns region and year to match cases.
+Joined_Data_Averages <- full_join(Average_Intake, Average_life_expectancy, by = c("Region", "Year"))
+```
+
+
+## Data Visualization  
+```{r warning=FALSE}
+library(ggplot2)
+#Plots the average alcohol intake across several years, and maps the general location to Color.
+
+ggplot(Average_Intake, aes(x = Year, y = Average_Intake, color = Region)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average Alcohol Intake per Year by Location",
+       x = "Year",
+       y = "Average Alcohol Intake (Liters)") +
+  theme_minimal()
+
+```
+This graph shows the trend of Alcohol Consumption over time for different regions of the world. 
+
+```{r warning=FALSE}
+
+#Plots the average alcohol intake across several years, and maps the general location to Color.
+library(ggplot2)
+
+ggplot(Average_life_expectancy, aes(x = Year, y = Average_life_expectancy, color = Region)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average Life expectancy per Year by Location",
+       x = "Year",
+       y = "Average Life Expectancy") +
+  theme_minimal()
+  
+
+```
+This graph shows the trend of Life Expectancy over time for different regions of the world. 
+
+```{r warning=FALSE}
+# Define different shapes for each region
+shape_map <- c("Africa" = 1, "Americas" = 2, "Europe" = 3, "Eastern Mediterranean" = 4, "South-East Asia" = 5, "Western Pacific" = 19)
+
+
+#Plots the average alcohol intake and Average life expectancy, and maps the different regions to different shapes..
+
+ggplot(Joined_Data_Averages, aes(x = Average_Intake, y = Average_life_expectancy, shape = Region)) +
+  geom_point(size = 3) +
+  scale_shape_manual(values = shape_map) +  # Apply the shape mapping
+  labs(title = "Relationship between Average Alcohol Intake and Life Expectancy",
+       x = "Average Alcohol Intake (liters)",
+       y = "Average Life Expectancy") +
+  theme_minimal()
+
+```
+
+This graph shows the average alcohol intake against Average life expectancy for different regions of the world
+
+
+## Conclusion 
+  Based on the observations of the data shown in these graphs, the recent trends in average alcohol consumption has been relatively steady until around 2011 when alcohol consumption started to decrease in most regions and has continued to decrease. The trend for life expectancy in almost all regions has slowly and steady increasing over time around the same amount each year. Africa has increased its life expectancy at a steady but more rapid rate compared to the other regions. The one outlier is the Eastern mediterranean from 2014 to 2015 the life expectancy decreased a lot, although followed similiar trends as the other countries previous to 2014. In my background information, I mentioned that high alcohol consumption in an individual is associated with various health risks, suggesting that I thought the higher a country's alcohol consumption is, the lower their life expectancy would be. However, looking at the graph above, the opposite seems to be true, the higher a country's alcohol consumption is the higher their life expectancy is. To answer the second part of my research question about the relationship between alcohol consumption and life expectancy, if you take Africa as an outlier, then there is relatively strong positive correlation between average alcohol consumption and average life expectancy. A positive correlation means that as alcohol consumption increases so does life expectancy. Although looking at the the graph above,it can be easily thought that higher alcohol consumption actaully increases life expectancy because their is a direct positive correlation, this can be easily disproven by considered the results of Africa in our graph. Africa has a higher average alcohol consumption then several other regions but it has a much lower life expectancy, showing that there is not a direct relationship between higher alcohol consumption and life expectancy because does not always mean a higher life expectancy as seen in individual people. While their is a positve correlation between alcohol intake and life expectancy there are many other important factors that influence life expectancy that are not captured in this graph, so this is only part of the picture. 
+
+
+
+
